@@ -1197,6 +1197,30 @@ git push -u origin main
 #    (Settings > General > Danger Zone > "Change repository visibility")
 ```
 
+### 8.1 PUBLICACAO (13/11/2026, depois da sanitizacao)
+
+O usuario confirmou que o repositório está **PRIVADO** e passou a URL; a
+publicação foi feita com o conteudo sanitizado:
+
+```powershell
+git remote add origin https://github.com/andreperez27/Anperez_condominios.git
+git ls-remote origin          # autenticou; repositorio remoto estava VAZIO
+git push -u origin main       # * [new branch] main -> main
+```
+
+Resultado no remoto: `refs/heads/main` = `bbac3c7` (2 commits: a raiz
+sanitizada e o diario), **54 arquivos**, **nenhum arquivo de dado**, e o
+**bundle nao publicado**.
+
+Prova de que o que foi publicado esta limpo: a arvore foi extraida do
+proprio `origin/main` (`git archive`) e varrida — **0 ocorrencias** de
+valor, NF, nome de arquivo, razao social ou referencia de documento reals
+(o patch do historico publicado tambem: 0).
+
+O bundle com o historico ORIGINAL **nao foi para o GitHub** — ele contem o
+dado real e continua em `C:\Users\andre\.opencode\backups\`, esperando uma
+copia em disco externo.
+
 ### 9. Pendencias
 
 - O bundle com o historico original precisa de uma copia em disco externo
