@@ -1050,3 +1050,161 @@ ASCII. Os regexes do runner tambem foram ajustados para o prefixo
 - Varredura de dado real nos docs (42 valores R$, 3 NFs, 160 nomes de
   arquivo) — ainda pendente de decisao.
 - Revisao do usuario antes de qualquer coisa no remoto.
+---
+## 2026-11-13 - Etapa 9: sanitizacao do repositorio (valores, NFs, nomes de arquivo, razoes sociais) e reescrita do historico
+
+**Gatilho:** antes de qualquer push ao GitHub, o usuario pediu a sanitizacao
+definitiva do repositorio e do historico. Nada foi enviado a servico externo;
+nada foi empurrado; nenhum remote foi configurado.
+
+### 1. Backup do historico (PRIMEIRO, antes de tocar em qualquer arquivo)
+
+```
+C:\Users\andre\.opencode\backups\anperez_condominios-HISTORICO-ORIGINAL-20261113-131552.bundle
+```
+
+- Fora do repositorio e fora de qualquer pasta sincronizada com nuvem
+  (o OneDrive do perfil fica em C:\Users\andre\OneDrive; o bundle NAO esta
+  la de proposito — ele contem o dado real).
+- `git bundle create ... --all` + `git bundle verify`: "The bundle records a
+  complete history" (2 refs: main e HEAD; 1,72 MB).
+- Junto dele ficaram as ferramentas da sanitizacao (ver §6).
+
+### 2. Metodo: minerar antes de trocar
+
+Nao troquei nada "no olho". O caminho foi:
+
+1. **Mineria**: extrai do repo todo numero monetario (BR e plano), numero de
+   NF, nome de arquivo e razao social; classifica como real/ficticio pela
+   frequencia (valor que aparece tambem em migrations/tests/seed e do
+   fixture sintetico; valor que so aparece nos docs veio do dado real).
+   Resultado: 220 candidatos a valor real, 213 nomes de arquivo distintos,
+   20 entidades (condominio, fornecedores, banco, concessionarias).
+2. **Mapa** de equivalencias ficticias coerentes (197 chaves).
+3. **Aplicacao** em todo arquivo de texto do repo (docs, seed, migrations,
+   testes, ferramentas) e nas copias sincronizadas em `plan\`.
+4. **Verificador** independente (patterns do dado real) rodado em 3 camadas.
+
+### 3. O que foi substituido (476 ocorrencias em 13 arquivos)
+
+⚠️ **Este registro NAO reproduz os valores reais** — citar o valor original
+aqui o colocaria de volta no repositorio. A lista completa dos padroes
+substituidos esta na ferramenta, **fora do repo**, em
+`C:\Users\andre\.opencode\backups\sanitiza.py`.
+
+| Categoria | Virou |
+|---|---|
+| Valor monetario real (caso de nota fiscal, parcela de piscina, reposicao de caixa, correcao monetaria, soma das transferencias) | valor plausivel do mesmo porte, sem relacao com o original |
+| Valor dos blocos de exemplo (planilha-resumo, extrato) | valores redondos com a **mesma aritmetica** do bloco original |
+| Numero de nota fiscal (3 no total, mais as que apareciam em lista) | `NF-2xx` / `Doc-2xx` (distincao entre elas preservada: a logica do doc depende de "mesma NF em duas contas") |
+| Nome de arquivo com o nome do condominio (`..._condominio_...`) | `extrato_AAAA-MM.xls` |
+| Nome de arquivo com fornecedor ou concessionaria | `concessionaria_energia_AAAA-MM.pdf`, `fornecedor_*.xlsx` |
+| Nome de arquivo de planilha-resumo e de balancete | `planilha-resumo.xlsx`, `balancete_AAAA-MM.pdf` |
+| Razao social do condominio | `CONDOMINIO EXEMPLO` |
+| Razao social de fornecedor / concessionaria / banco | `FORNECEDOR EXEMPLO`, `CONCESSIONARIA ENERGIA/GAS/AGUA`, `BANCO EXEMPLO` |
+| Referencia de documento no historico do extrato | `RC.ATR.UN.0000xx` + `RC.000000xx` |
+| Unidade citada como exemplo (fora da faixa do fixture) | `unidade 42`, `unidade 17` |
+
+**A aritmetica dos exemplos foi preservada de proposito** (o doc ainda fecha):
+- planilha-resumo: saldo anterior + creditos - debitos = saldo, nas cinco linhas
+  do bloco (todas batem ao centavo);
+- extrato: saldo inicial - debito total + credito total = saldo final;
+- tabela de divergencias: a composicao por fundo soma exatamente a diferenca
+  declarada, nas quatro linhas da tabela.
+
+**Ficaram de fora (e por que):** os valores do fixture sintetico (1.000,00,
+30,00, 50,00, 1.030,00 e companhia — precisam bater com os testes); as
+tolerancias do sistema (0,00 / 0,01 / 0,50); numeracao de secao, versao de
+Python, contagem de linhas e tamanho de arquivo (metadado estrutural, sem
+identificador); os codigos de conta do plano (rubricas e fundos sao as
+mesmas do seed ficticio); o nome do app antigo (software, nao dado).
+
+### 4. Bug encontrado no caminho (e corrigido)
+
+A primeira aplicacao reescreveu **todos** os arquivos de CRLF para LF
+(`read_text` traduz CRLF->LF na leitura) — o diff passou a mostrar 5.783
+linhas alteradas em vez de 240. Corrigido lendo com `newline=""` e
+reescrevendo igual; o diff ficou minimo e as quebras de linha foram
+preservadas. Vale a regra: **qualquer edicao em lote de arquivo versionado
+precisa preservar a fin de linha** (o repo e CRLF).
+
+### 5. Reescrita do historico (item 3 do pedido)
+
+Sem remote, o historico foi reescrito a partir do estado sanitizado, com um
+**commit raiz** e arvore atual:
+
+```powershell
+git checkout --orphan sanitizado
+git add -A
+git commit -m "ANPEREZ CONDOMINIOS - Fase 0 (historico reiniciado com estado sanitizado) ..."
+git branch -D main
+git branch -m sanitizado main
+git reflog expire --expire=now --all
+git gc --prune=now --aggressive
+```
+
+Resultado: `git log --oneline` mostra **1 commit** (7252e22) e o banco de
+objetos tem **64 objetos = 64 alcancaveis** (nenhum objeto orfao do
+historico antigo sobreviveu).
+
+### 6. Prova: varredura em 3 camadas (tudo zero)
+
+1. **Arvore de trabalho**: 0 ocorrencias (o verificador achava 503 no
+   arquivo original — o detector funciona).
+2. **Patch de todo o historico** (`git log --all -p`): 0 ocorrencias.
+3. **Todos os blobs do banco do git** (64 objetos, 54 blobs): 0 ocorrencias.
+   - Exclusao: o blob binario do `logo.png` — sequencias de letras num PNG
+     aparecem por acaso nos bytes, e nao sao dado.
+
+**As ferramentas nao foram versionadas de proposito**: o verificador
+contem a LISTA dos valores reais — versiona-la seria colocar o dado real
+de volta no repo. Ficaram em
+`C:\Users\andre\.opencode\backups\` (varre_dado_real.py, sanitiza.py,
+mina_valores.py), junto do bundle.
+
+### 7. Bateria
+
+**267 verdes, BUILD OK** com o repositorio sanitizado (o seed e as
+migrations mudaram: o alias da aplicacao financeira no seed passou a
+`APLICACAO BANCO EXEMPLO`, e os comentarios das migrations com o valor real
+foram ajustados) — com
+`supabase db reset` + bootstrap + `run_tests.ps1` do zero.
+
+### 8. Estado e comandos prontos (NAO executados)
+
+- Repositorio: 1 commit raiz, arvore sanitizada, **sem remote** (nao ha
+  `git remote -v`), nada empurrado.
+- O bundle com o historico original contem dado real: ele NAO deve ir para
+  nuvem nem para o GitHub.
+
+Proximos passos (para quando o usuario autorizar):
+
+```powershell
+# 1. conferir que nao ha remote e que o estado esta limpo
+git remote -v
+git status --short
+git log --oneline
+
+# 2. (opcional, recomendado) conferir de novo antes de publicar
+python C:\Users\andre\.opencode\backups\varre_dado_real.py G:\Anperez_Condominios
+
+# 3. configurar o remote PRIVADO e publicar
+git remote add origin https://github.com/andreperez27/Anperez_condominios.git
+git ls-files | Select-String -Pattern '\.(xls|xlsx|xlsm|csv|pdf|db|sqlite)$'
+git push -u origin main
+
+# 4. conferir no GitHub que o repositorio esta PRIVATE antes do push
+#    (Settings > General > Danger Zone > "Change repository visibility")
+```
+
+### 9. Pendencias
+
+- O bundle com o historico original precisa de uma copia em disco externo
+  (ele contem dado real; nao deve ficar so nesta maquina).
+- Varredura de dado real nos docs: **concluida** nesta etapa (os 42
+  valores, 3 NFs e os nomes de arquivo foram trocados por equivalentes
+  ficticios coerentes).
+- As 3 migrations da Etapa 7 (01700, 01800, 01900) continuam locais,
+  aguardando revisao para irem ao remoto.
+- E10 (trilha de auditoria do acesso a anexos) e as decisoes de papel do
+  §3.5.4 seguem em aberto.
