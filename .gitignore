@@ -1,0 +1,119 @@
+# ============================================================================
+# SEGURANÇA — nunca remova estas linhas
+# ============================================================================
+# .env.local é onde moram as chaves reais do Supabase. Enquanto ele estiver
+# listado aqui, "git add ." jamais vai incluir esse arquivo num commit.
+.env.local
+.env.*.local
+
+# Qualquer variação com "secret" ou "service_role" no meio também fica de
+# fora por precaução extra, mesmo que você crie um arquivo com nome diferente.
+*secret*
+*service_role*
+
+# ============================================================================
+# DADOS DO CONDOMÍNIO — fora do Git, sempre (LGPD + sigilo)
+# ============================================================================
+# A pasta de trabalho do importador. Contém extratos, balancetes, caixas
+# locais e planilhas do condomínio: dados de terceiros e sensíveis
+# (inadimplência, consumo por unidade, valores pagos).
+dados_origem/
+dados_trabalho/
+
+# Regra negativa global de formatos de dado. Sem ela, basta um "git add ."
+# numa pasta com a planilha-resumo para versionar dados de inadimplência
+# por unidade no repositório.
+*.xls
+*.xlsx
+*.xlsb
+*.xlsm
+*.pdf
+*.csv
+
+# Exceções explícitas: documentação e SQL versionados.
+# (As exceções abaixo são redundantes para .md, mas documentam a intenção
+#  e protegem caso a regra global seja afrouxada no futuro.)
+!docs/**/*.md
+!supabase/seed.sql
+!supabase/migrations/*.sql
+!supabase/tests/*.sql
+!scripts/**/*.csv
+
+# ============================================================================
+# SEGREDOS E CHAVES
+# ============================================================================
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+credentials/
+.service-account*.json
+supabase/.temp/
+supabase/.branches/
+
+# Cópia local do e2e usada contra o REMOTO: tem senha forte embutida.
+# O arquivo original (e2e_rest.py) é versionado; a cópia com senha, não.
+supabase/tests/e2e_rest_remoto.py
+
+# ============================================================================
+# AMBIENTES LOCAIS
+# ============================================================================
+.venv/
+venv/
+env/
+node_modules/
+dist/
+dist-ssr/
+.vite/
+coverage/
+.eslintcache
+*.local
+
+# ============================================================================
+# PYTHON
+# ============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.egg-info/
+.uv/
+
+# ============================================================================
+# LOGS E CACHES
+# ============================================================================
+*.log
+npm-debug.log*
+logs/
+
+# ============================================================================
+# BANCOS E DUMPS
+# ============================================================================
+*.db
+*.sqlite
+*.sqlite3
+*.dump
+*.bak
+output/
+
+# ============================================================================
+# EDITORES E SO
+# ============================================================================
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
