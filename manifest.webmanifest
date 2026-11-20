@@ -1,0 +1,20 @@
+{
+  "name": "ANPEREZ Condominios",
+  "short_name": "ANPEREZ",
+  "description": "Gestao financeira de condominios",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#001030",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "./favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
